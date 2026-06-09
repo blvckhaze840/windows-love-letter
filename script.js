@@ -502,13 +502,13 @@ const onPointerMove = (event) => {
   } else if (hit && hit.part === 'close') {
     setCursorMode('pointer')
   } else {
-    setCursorMode('wait')
+    setCursorMode('default')
   }
 }
 
 const onPointerUp = () => {
   dragging = false
-  setCursorMode('wait')
+  setCursorMode('default')
 }
 
 const animate = (time) => {
@@ -531,9 +531,7 @@ const animate = (time) => {
   stampTrail(baseX, baseY, time)
   drawAlert(ctx, baseX, baseY, time)
 
-  if (useCustomCursor && mouseX >= 0) {
-    drawHourglass(mouseX, mouseY, time)
-  }
+// custom hourglass cursor disabled
 }
 
 c.addEventListener('mousedown', onPointerDown)
@@ -557,5 +555,5 @@ c.addEventListener('touchend', onPointerUp)
 window.addEventListener('resize', setup)
 
 setup()
-setCursorMode('wait')
+setCursorMode('default')
 requestAnimationFrame(animate)
