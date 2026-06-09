@@ -6,6 +6,7 @@ body {
   width: 100%;
   height: 100%;
   background: #4a9fd4;
+  cursor: none;
 }
 
 canvas {
@@ -13,5 +14,5 @@ canvas {
   width: 100vw;
   height: 100vh;
   image-rendering: pixelated;
-  cursor: wait;
+  cursor: none;
 }

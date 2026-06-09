@@ -28,8 +28,11 @@ let lastTrailTime = 0
 let prevX = -9999
 let prevY = -9999
 let bsodActive = false
+let mouseX = -100
+let mouseY = -100
+let useCustomCursor = true
 
-const TRAIL_HOLD_MS = 6000
+const TRAIL_HOLD_MS = 15000
 
 const messages = [
   'The program is not responding. The feelings, however, are very responsive.',
@@ -264,9 +267,137 @@ const drawBsod = (time) => {
     ty += line === '' ? 10 : 22
   }
 
+  const drawPixelHeart = (target, x, y, px, pulse) => {
+    const heart = [
+      '01100110',
+      '11111111',
+      '11111111',
+      '01111110',
+      '00111100',
+      '00011000'
+    ]
+    const color = pulse > 0.5 ? '#ff8fab' : '#ff5c7a'
+
+    for (let row = 0; row < heart.length; row++) {
+      for (let col = 0; col < heart[row].length; col++) {
+        if (heart[row][col] === '1') {
+          target.fillStyle = color
+          target.fillRect(x + col * px, y + row * px, px, px)
+        }
+      }
+    }
+  }
+
+  const signature = 'тут была катя'
+  const heartPx = 2
+  const heartW = 8 * heartPx
+  const heartPulse = Math.floor(time / 500) % 2
+  const sigX = sw - 40
+  const sigY = sh - 50
+
+  ctx.font = 'italic 13px "Courier New", Courier, monospace'
+  ctx.fillStyle = '#ffcccc'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+
+  const sigWidth = ctx.measureText(signature).width
+  drawPixelHeart(ctx, sigX - sigWidth - heartW - 8, sigY + 1, heartPx, heartPulse)
+  ctx.fillText(signature, sigX, sigY)
+
   ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
   for (let y = 0; y < sh; y += 4) {
     ctx.fillRect(0, y, sw, 1)
+  }
+}
+
+const drawHourglass = (hotspotX, hotspotY, time) => {
+  const frame = Math.floor(time / 90) % 8
+  const drainStep = frame % 4
+  const flipped = frame >= 4
+  const scale = 2
+  const size = 16
+  const cx = size / 2
+  const neckY = 8
+
+  const topBulbPath = () => {
+    ctx.beginPath()
+    ctx.moveTo(cx - 5.5, 1)
+    ctx.lineTo(cx + 5.5, 1)
+    ctx.lineTo(cx + 1, neckY)
+    ctx.lineTo(cx - 1, neckY)
+    ctx.closePath()
+  }
+
+  const botBulbPath = () => {
+    ctx.beginPath()
+    ctx.moveTo(cx - 1, neckY)
+    ctx.lineTo(cx + 1, neckY)
+    ctx.lineTo(cx + 5.5, 15)
+    ctx.lineTo(cx - 5.5, 15)
+    ctx.closePath()
+  }
+
+  ctx.save()
+  ctx.imageSmoothingEnabled = false
+  ctx.translate(hotspotX, hotspotY)
+  ctx.scale(scale, scale)
+  ctx.translate(-size / 2, -size / 2)
+
+  if (flipped) {
+    ctx.translate(cx, cx)
+    ctx.rotate(Math.PI)
+    ctx.translate(-cx, -cx)
+  }
+
+  ctx.strokeStyle = '#000000'
+  ctx.lineWidth = 1
+  ctx.fillStyle = '#ffffff'
+
+  topBulbPath()
+  ctx.fill()
+  ctx.stroke()
+
+  botBulbPath()
+  ctx.fill()
+  ctx.stroke()
+
+  const topFill = Math.max(0, 1 - drainStep / 3)
+  const botFill = drainStep / 3
+
+  ctx.fillStyle = '#e8a317'
+
+  if (topFill > 0.02) {
+    ctx.save()
+    topBulbPath()
+    ctx.clip()
+    ctx.fillRect(cx - 5, 2, 10, 5.5 * topFill)
+    ctx.restore()
+  }
+
+  if (botFill > 0.02) {
+    ctx.save()
+    botBulbPath()
+    ctx.clip()
+    ctx.fillRect(cx - 5, 15 - 5.5 * botFill, 10, 5.5 * botFill)
+    ctx.restore()
+  }
+
+  if (drainStep > 0 && drainStep < 3) {
+    ctx.fillRect(cx - 0.5, neckY - 1.5, 1, 3)
+  }
+
+  ctx.restore()
+}
+
+const setCursorMode = (mode) => {
+  useCustomCursor = mode === 'wait'
+
+  if (mode === 'wait') {
+    c.style.cursor = 'none'
+    document.body.style.cursor = 'none'
+  } else {
+    c.style.cursor = mode
+    document.body.style.cursor = mode
   }
 }
 
@@ -335,7 +466,7 @@ const onPointerDown = (event) => {
   if (hit.part === 'ok') {
     bsodActive = true
     dragging = false
-    c.style.cursor = 'default'
+    setCursorMode('default')
     return
   }
 
@@ -343,11 +474,14 @@ const onPointerDown = (event) => {
     dragging = true
     offsetX = event.clientX - baseX
     offsetY = event.clientY - baseY
-    c.style.cursor = 'grabbing'
+    setCursorMode('grabbing')
   }
 }
 
 const onPointerMove = (event) => {
+  mouseX = event.clientX
+  mouseY = event.clientY
+
   if (bsodActive) return
 
   if (dragging) {
@@ -362,19 +496,19 @@ const onPointerMove = (event) => {
   const hit = hitTest(event.clientX, event.clientY)
 
   if (hit && hit.part === 'title') {
-    c.style.cursor = 'grab'
+    setCursorMode('grab')
   } else if (hit && hit.part === 'ok') {
-    c.style.cursor = 'pointer'
+    setCursorMode('pointer')
   } else if (hit && hit.part === 'close') {
-    c.style.cursor = 'pointer'
+    setCursorMode('pointer')
   } else {
-    c.style.cursor = 'wait'
+    setCursorMode('wait')
   }
 }
 
 const onPointerUp = () => {
   dragging = false
-  c.style.cursor = 'wait'
+  setCursorMode('wait')
 }
 
 const animate = (time) => {
@@ -396,6 +530,10 @@ const animate = (time) => {
 
   stampTrail(baseX, baseY, time)
   drawAlert(ctx, baseX, baseY, time)
+
+  if (useCustomCursor && mouseX >= 0) {
+    drawHourglass(mouseX, mouseY, time)
+  }
 }
 
 c.addEventListener('mousedown', onPointerDown)
@@ -419,5 +557,5 @@ c.addEventListener('touchend', onPointerUp)
 window.addEventListener('resize', setup)
 
 setup()
-c.style.cursor = 'wait'
+setCursorMode('wait')
 requestAnimationFrame(animate)
